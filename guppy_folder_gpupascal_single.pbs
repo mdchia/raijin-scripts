@@ -1,0 +1,46 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q gpupascal
+#PBS -l walltime=4:00:00
+#PBS -l mem=32GB
+#PBS -l jobfs=200GB
+#PBS -l ncpus=6
+#PBS -l ngpus=1
+
+## The job will be executed from current working directory instead of home.
+#PBS -l wd
+
+#PBS -o logs
+#PBS -e logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+set -euo pipefail # safe mode
+set -x # logging
+
+## Modules
+
+module load guppy/3.0.3
+
+## script variables
+
+# call as follows:
+# qsub -v fullfilename=/path/to/fast5.fast5,kitname=kitname,outpath=/path/to/outdir/ guppy_folder_gpupascal_single.pbs
+filenameExt=$(basename "$fullfilename")
+filename="${filenameExt%.*}"
+dirPrefix=$(basename $(dirname "$fullfilename"))
+justDir=$(dirname "$fullfilename")
+
+# prep folders
+mkdir -p $PBS_JOBFS/fast5/
+mkdir -p $PBS_JOBFS/fastq/
+
+## copy reads to scratch disk
+cp -r $fullfilename $PBS_JOBFS/fast5/
+
+## basecall reads
+guppy_basecaller -i $PBS_JOBFS/fast5/ -s $PBS_JOBFS/fastq/ --flowcell FLO-MIN106 --kit $kitname -r -x "cuda:0"
+
+## bring the basecalls and summary back (renamed to match)
+cat $PBS_JOBFS/fastq/*.fastq > $outpath/${filename}.fastq
+mv $PBS_JOBFS/fastq/sequencing_summary.txt $outpath/${filename}_sequencing_summary.txt

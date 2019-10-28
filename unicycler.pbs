@@ -1,0 +1,45 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q normalsl
+#PBS -l walltime=12:00:00
+#PBS -l mem=32GB
+#PBS -l jobfs=32GB
+#PBS -l ncpus=16
+
+## The job will be executed from current working directory instead of home.
+#PBS -l wd
+#PBS -o logs
+#PBS -e logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+## Modules
+module load unicycler
+
+set -euo pipefail # safe mode
+set -x # logging
+
+## script variables
+filenameExt=$(basename "$fullfilename")
+filename="${filenameExt%.*}"
+dirPrefix=$(basename $(dirname "$fullfilename"))
+
+export TERM=xterm # bug fix
+
+## run Unicycler
+unicycler-runner.py -l $fullfilename -o $PBS_JOBFS/${filename}_unicycler --mode bold -t $PBS_NCPUS
+
+## bring the output back
+mkdir -p ${filename}_unicycler/
+mv $PBS_JOBFS/${filename}_unicycler/* ${filename}_unicycler/
+
+function fasta_stats { echo "Reads"; grep -c "^>" $1; echo "Bases"; grep -v ">" $1 | wc | awk '{print $3-$1}'; }
+
+## send a slack message if it works
+if [ -e ${filename}_unicycler/assembly.fasta ]
+then
+   msg="${filename}_unicycler/assembly.fasta success! (unicycler)
+"
+   msg="${msg}$(fasta_stats ${filename}_unicycler/assembly.fasta)"
+   qsub -v "message=${msg},slackcode=SUCCESS" /g/data/xe2/ming/pbs/send_slack.pbs
+fi

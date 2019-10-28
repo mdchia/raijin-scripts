@@ -1,0 +1,43 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q gpupascal
+#PBS -l walltime=4:00:00
+#PBS -l mem=16GB
+#PBS -l jobfs=100GB
+#PBS -l ncpus=6
+#PBS -l ngpus=1
+
+## The job will be executed from current working directory instead of home.
+#PBS -l wd
+
+#PBS -o logs
+#PBS -e logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+set -euo pipefail # safe mode
+set -x # logging
+
+## Modules
+
+module load guppy/3.0.3
+
+## script variables
+
+# call as follows:
+# qsub -v fulldirname=/path/to/dir,kitname=kitname guppy_folder.pbs
+dirname=$(basename "$fulldirname")
+
+# prep folders
+mkdir -p $PBS_JOBFS/fast5/
+mkdir -p $PBS_JOBFS/fastq/
+
+## copy reads to scratch disk
+cp -r $fulldirname $PBS_JOBFS/fast5/
+
+## basecall reads
+guppy_basecaller -i $PBS_JOBFS/fast5/ -s $PBS_JOBFS/fastq/ --flowcell FLO-MIN106 --kit $kitname -r -x "cuda:0"
+
+## bring the basecalls back
+mkdir -p ${dirname}_basecalled
+mv $PBS_JOBFS/fastq/* ${dirname}_basecalled/

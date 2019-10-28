@@ -1,0 +1,26 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q normalsl
+#PBS -l walltime=48:00:00
+#PBS -l mem=192GB
+#PBS -l jobfs=400GB
+#PBS -l ncpus=32
+
+## The job will be executed from current working directory instead of home.
+#PBS -l wd
+
+#PBS -o logs
+#PBS -e logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+## Modules
+module load masurca
+
+set -euo pipefail # safe mode
+set -x # logging
+
+## run masurca first to generate script
+## and then do qsub from the directory
+## do assembly
+./assemble.sh

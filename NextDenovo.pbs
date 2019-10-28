@@ -1,0 +1,66 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q normalsl
+#PBS -l walltime=12:00:00
+#PBS -l mem=32GB
+#PBS -l jobfs=16GB
+#PBS -l ncpus=2
+
+## The job will be executed from current working directory instead of home.
+#PBS -l wd
+
+#PBS -o logs
+#PBS -e logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+## Modules
+module load nextdenovo
+
+set -euo pipefail # safe mode
+set -x # logging
+
+# use as
+# qsub -v fullfilename=/path/to/fastq NextDenovo.pbs
+# needs .fa.gz maybe? probs not
+
+## script variables
+filenameExt=$(basename "$fullfilename")
+filename="${filenameExt%.*}"
+dirPrefix=$(basename $(dirname "$fullfilename"))
+
+## write config files to scratch
+cat >$PBS_JOBFS/run.cfg <<EOL
+[General]
+job_type = local
+job_prefix = nextDenovo
+task = all
+rewrite = yes # yes/no
+input_type = raw
+input_fofn = ${PBS_JOBFS}/input.fofn
+workdir = ${PBS_JOBFS}/${filename}_nextdenovo
+
+[correct_option]
+read_cuoff = 1k
+seed_cutoff = 25k
+blocksize = 10g
+pa_raw_align = ${PBS_NCPUS}
+pa_correction = ${PBS_NCPUS}
+seed_cutfiles = ${PBS_NCPUS}
+sort_options = -m 1g -t ${PBS_NCPUS} -k 50
+minimap2_options = -x ava-ont -t ${PBS_NCPUS}
+correction_options = -p ${PBS_NCPUS}
+EOL
+
+cat >$PBS_JOBFS/input.fofn <<EOL
+${PBS_JOBFS}/${filenameExt}
+EOL
+
+## copy reads to scratch disk
+cp $fullfilename $PBS_JOBFS/$filenameExt
+
+## do assembly
+nextDenovo $PBS_JOBFS/run.cfg
+
+## bring the demux back
+mv ${PBS_JOBFS}/${filename}_nextdenovo ${filename}_nextdenovo
