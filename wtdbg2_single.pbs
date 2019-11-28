@@ -1,0 +1,49 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q normalsl
+#PBS -l walltime=48:00:00
+#PBS -l mem=96GB
+#PBS -l jobfs=200GB
+#PBS -l ncpus=16
+#PBS -l other=gdata1
+#PBS -l other=hyperthread
+
+## The job will be executed from current working directory instead of home.
+#PBS -l wd
+
+#PBS -o wtdbg_logs
+#PBS -e wtdbg_logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+## Modules
+module load wtdbg2
+
+set -euo pipefail # safe mode
+set -x # logging
+
+## script variables
+filenameExt=$(basename "$fullfilename")
+filename="${filenameExt%.*}"
+dirPrefix=$(basename $(dirname "$fullfilename"))
+
+## copy reads to scratch disk
+cp $fullfilename $PBS_JOBFS/$filenameExt
+
+## do assembly
+## $((PBS_NCPUS*2)) for hyperthreading, experimental
+wtdbg2 -x ont -g $genomeSize -t $((PBS_NCPUS*2)) -i $PBS_JOBFS/$filenameExt -fo out
+
+## get consensus
+wtpoa-cns -t $((PBS_NCPUS*2)) -i out.ctg.lay.gz -fo ${filename}.ctg.fa
+
+function fasta_stats { echo "Reads"; grep -c "^>" $1; echo "Bases"; grep -v ">" $1 | wc | awk '{print $3-$1}'; }
+
+## send a slack message if it works
+if [ -e ${filename}.ctg.fa ]
+then
+   msg="${filename}.ctg.fa success! (wtdbg2)
+"
+   msg="${msg}$(fasta_stats ${filename}.ctg.fa)"
+   qsub -v "message=${msg},slackcode=SUCCESS" /g/data/xe2/ming/pbs/send_slack.pbs
+fi
