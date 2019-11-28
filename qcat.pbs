@@ -21,7 +21,7 @@ set -euo pipefail # safe mode
 set -x # logging
 
 # use as
-# qsub -v fullfilename=/path/to/full,kitname=kitname qcat.pbs
+# qsub -v fullfilename=/path/to/full qcat.pbs
 ## script variables
 filenameExt=$(basename "$fullfilename")
 filename="${filenameExt%.*}"
@@ -39,3 +39,4 @@ qcat -f $PBS_JOBFS/$filenameExt -b $PBS_JOBFS/${filename}_demux --trim -k $kitna
 ## bring the demux back
 mkdir -p ${filename}_demux
 mv $PBS_JOBFS/${filename}_demux/* ${filename}_demux
+
