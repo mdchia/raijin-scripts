@@ -20,7 +20,7 @@ set -x # logging
 
 ## Modules
 
-module load guppy/3.0.3
+module load guppy/3.2.4
 
 ## script variables
 
