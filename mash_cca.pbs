@@ -1,0 +1,22 @@
+#!/bin/bash
+#PBS -P xe2
+#PBS -q normal
+#PBS -l walltime=48:00:00
+#PBS -l mem=64GB
+#PBS -l jobfs=400GB
+#PBS -l ncpus=64
+#PBS -l wd
+#PBS -o logs
+#PBS -e logs
+#PBS -m abe
+#PBS -M Ming-Dao.Chia@anu.edu.au
+
+set -euo pipefail
+set -x
+
+module load mash
+mash sketch -p 64 -o $PBS_JOBFS/cca_reference.msh /short/xe2/workspaces/currency-creek/*.fastq.gz
+
+mv $PBS_JOBFS/cca_reference.msh /g/data/xe2/projects/currency_creek_eucs_analysis/mash_sketches/
+
+
